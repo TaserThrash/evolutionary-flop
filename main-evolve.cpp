@@ -108,7 +108,7 @@ class Prey{
 		y += sin(r) * s;
 		
 		if(!sF){
-			r += t - (rand() % 3) * 2 * t;
+			r += t - (rand() % 2) * 2 * t;
 		}
 		
 		f -= (v + s + t) / 3;
