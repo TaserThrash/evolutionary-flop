@@ -22,6 +22,78 @@ WPARAM wParam, LPARAM lParam);
 void EnableOpenGL (HWND hWnd, HDC *hDC, HGLRC *hRC);
 void DisableOpenGL (HWND hWnd, HDC hDC, HGLRC hRC);
 
+
+void line(float x1, float y1, float x2, float y2){
+	glPushMatrix();
+    glBegin(GL_LINE_LOOP);
+    glColor3f(1, 1, 0);
+    glVertex2f(x1, y1);
+    glVertex2f(x2, y2);
+    glEnd();
+    glPopMatrix();
+}
+ 
+bool collide(float x, float y, float w, float h, float xx, float yy, float ww, float hh){
+	return ((x >= xx && x <= xx + ww) || (x + w >= xx && x + w <= xx + ww) || (x <= xx && x + w >= xx) || (xx + ww >= x && xx + ww <= x + w)) && ((y >= yy && y <= yy + hh) || (y + h >= yy && y + h <= yy + hh) || (y >= yy && y + h <= yy) || (yy + hh >= y && yy + hh <= y + h));
+}
+ 
+ int z[10][7] = {
+ 	{1, 1, 1, 0, 1, 1, 1},
+	{0, 1, 0, 0, 1, 0, 0},
+	{1, 1, 0, 1, 0, 1, 1},
+	{1, 0, 1, 1, 0, 1, 1},
+	{0, 0, 1, 1, 1, 0, 1},
+	{1, 0, 1, 1, 1, 1, 0},
+	{1, 1, 1, 1, 1, 1, 0},
+	{0, 0, 1, 0, 0, 1, 1},
+	{1, 1, 1, 1, 1, 1, 1},
+	{0, 0, 1, 1, 1, 1, 1}
+};
+
+
+void drawSevenSegment(float x, float y, int a){
+	if(z[a][0] != 0){
+		line(x, y, x + 0.05, y);
+	}
+	
+	if(z[a][1] != 0){
+		line(x, y, x, y + 0.05);
+	}
+	
+	if(z[a][2] != 0){
+		line(x + 0.05, y, x + 0.05, y + 0.05);
+	}
+	
+	if(z[a][3] != 0){
+		line(x, y + 0.05, x + 0.05, y + 0.05);
+	}
+	
+	if(z[a][4] != 0){
+		line(x, y + 0.05, x, y + 0.1);
+	}
+	
+	if(z[a][5] != 0){
+		line(x, y + 0.1, x + 0.05, y + 0.1);
+	}
+	
+	if(z[a][6] != 0){
+		line(x + 0.05, y + 0.05, x + 0.05, y + 0.1);
+	}
+}
+
+void drawInt(float x, float y, unsigned int z){
+	int c = log10(z);
+	
+	if(z == 0){
+		drawSevenSegment(x, y, -0.0);
+	} 
+	
+	for(int i = 0; i <= c; i ++){
+		int a = int((z / pow(10, i))) % 10;
+		drawSevenSegment(x + 0.08 * (c - i), y, a);
+	}
+} 
+
 /*
 			glPushMatrix ();
             glRotatef (theta, 0.0f, 0.0f, 1.0f);
@@ -282,7 +354,6 @@ Prey flee(Prey p) {
 void run(){
 	for (int i = 0; i < prey.size(); i++) {
 	    prey[i].update();
-	    prey[i].show();
 	    prey[i].seePlant();
 	    prey[i].eat();
 	    prey[i] = flee(prey[i]);
@@ -309,7 +380,6 @@ void run(){
 	
 	for (int i = 0; i < predators.size(); i++) {
 	    predators[i].update();
-	    predators[i].show();
 	    predators[i].seePrey();
 	    predators[i].eat();
 	    if (predators[i].f <= 0) {
@@ -319,7 +389,6 @@ void run(){
 	    
 	    if (predators[i].f > 30) {
 	    	predators[i].p = 0;
-            predators[i].f -= 20;
 	    }
 	    
 	    if (predators[i].p == 0) {
@@ -330,13 +399,12 @@ void run(){
 				p.s + float(rand() % 1000) / 5000000,
 				p.v + float(rand() % 1000) / 50000,
 				p.t + float(rand() % 10000) / 500000));
-			p.f -= 20;
+			predators[i].f -= 20;
 	    }
 	}
 	
 	for (int i = 0; i < plants.size(); i++) {
 	    plants[i].update();
-	    plants[i].show();
 	    
 	    if(int(plants[i].a) % 40 == 0 && rand() % 100 < 100){
 			plants.push_back(Plant(
@@ -392,6 +460,27 @@ void run(){
 	}
 };
 
+void show(HDC hDC){
+	glClearColor (0.0f, 0.0f, 0.0f, 0.0f);
+    glClear (GL_COLOR_BUFFER_BIT);
+    
+    for(int i = 0; i < prey.size(); i++){
+    	prey[i].show();
+	}
+	
+	for(int i = 0; i < plants.size(); i++){
+    	plants[i].show();
+	}
+	
+	for(int i = 0; i < predators.size(); i++){
+    	predators[i].show();
+	}
+	
+	drawInt(-0.89, 0.89, f);
+    
+	SwapBuffers (hDC);
+}
+
 
 /**************************
  * WinMain
@@ -430,13 +519,15 @@ int WINAPI WinMain (HINSTANCE hInstance,
     hWnd = CreateWindow (
       "GLSample", "OpenGL Sample", 
       WS_CAPTION | WS_POPUPWINDOW | WS_VISIBLE,
-      0, 0, 256, 256,
+      0, 0, 512, 512,
       NULL, NULL, hInstance, NULL);
 
     /* enable OpenGL for the window */
     EnableOpenGL (hWnd, &hDC, &hRC);
     
     init();
+    
+    show(hDC);
 
     /* program main loop */
     while (!bQuit)
@@ -459,12 +550,11 @@ int WINAPI WinMain (HINSTANCE hInstance,
         {
             /* OpenGL animation code goes here */
 
-            glClearColor (0.0f, 0.0f, 0.0f, 0.0f);
-            glClear (GL_COLOR_BUFFER_BIT);
+            
 
             run();
 
-            SwapBuffers (hDC);
+            
             
             if(GetAsyncKeyState(VK_SPACE)){
             	if(!space){
@@ -479,6 +569,9 @@ int WINAPI WinMain (HINSTANCE hInstance,
 
             if(sleep){
 				Sleep (1000 / 60);
+				show(hDC);
+			} else if(f % 60 == 0){
+				show(hDC);
 			}
         }
     }
